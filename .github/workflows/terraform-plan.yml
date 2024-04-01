@@ -1,6 +1,6 @@
 name: C3 - Plan Infrastructure
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       ref:
         description: Branch
