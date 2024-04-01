@@ -1,30 +1,5 @@
 name: C3 - Apply Infrastructure
 on:
-  workflow_dispatch:
-    inputs:
-      ref:
-        description: Branch
-        required: true
-        type: string
-        default: main
-      stage:
-        type: choice
-        description: Stage
-        options:
-          - production
-          - staging
-          - development
-          - review
-        required: true
-      pull_request:
-        description: Pull Request Number
-        required: false
-        type: string
-        default: ''
-      version:
-        description: Version
-        required: false
-        type: string
   workflow_call:
     inputs:
       ref:
