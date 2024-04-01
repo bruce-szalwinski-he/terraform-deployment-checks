@@ -1,0 +1,80 @@
+name: C3 - Apply Infrastructure
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch
+        required: true
+        type: string
+        default: main
+      stage:
+        type: choice
+        description: Stage
+        options:
+          - production
+          - staging
+          - development
+          - review
+        required: true
+      pull_request:
+        description: Pull Request Number
+        required: false
+        type: string
+        default: ''
+      version:
+        description: Version
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      ref:
+        description: Branch
+        required: true
+        type: string
+      stage:
+        description: Stage
+        required: true
+        type: string
+      pull_request:
+        description: Pull Request Number
+        required: false
+        type: string
+        default: ''
+      version:
+        description: Version
+        required: true
+        type: string
+jobs:
+  infra:
+    environment: ${{ inputs.stage }}
+    env:
+      DEPLOYMENT_ENVIRONMENT: ${{ vars.DEPLOYMENT_ENVIRONMENT || inputs.stage }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: terraform-${{ inputs.stage }}-${{ inputs.pull_request }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
+          role-duration-seconds: 1800
+      - uses: ./.github/actions/aws-terraform-init
+        with:
+          token: ${{ secrets.TFC_API_TOKEN }}
+          stage: ${{ env.DEPLOYMENT_ENVIRONMENT }}
+          pull_request: ${{ inputs.pull_request }}
+          create: ${{ inputs.pull_request != '' && 'true' || 'false' }}
+      - name: Apply Infrastructure Changes
+        env:
+          TF_VAR_tag_name: 0.0.1
+          TF_CLI_ARGS_apply: "-var-file=${{ env.DEPLOYMENT_ENVIRONMENT }}.tfvars -auto-approve"
+        run: |
+          terraform -chdir=tf/infra apply

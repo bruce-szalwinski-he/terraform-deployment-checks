@@ -1,0 +1,21 @@
+name: "Terraform Init"
+description: "Terraform Init"
+inputs:
+  stage:
+    description: Stage
+    required: true
+    default: "development"
+  token:
+    description: Terraform Cloud API Token
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_wrapper: false
+        terraform_version: 1.5.7
+    - name: Init
+      shell: bash
+      run: terraform init
+      working-directory: "./tf/infra"

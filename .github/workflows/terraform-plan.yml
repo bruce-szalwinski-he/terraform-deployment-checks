@@ -1,0 +1,52 @@
+name: C3 - Plan Infrastructure
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Branch
+        required: true
+        type: string
+        default: main
+      stage:
+        type: string
+        description: Stage
+        required: true
+        default: development
+      pull_request:
+        description: Pull Request
+        required: false
+        type: string
+        default: ''
+      version:
+        description: Version
+        required: false
+        type: string
+jobs:
+  infrastructure:
+    environment: ${{ inputs.stage || 'development' }}
+    env:
+      DEPLOYMENT_ENVIRONMENT: ${{ vars.DEPLOYMENT_ENVIRONMENT || inputs.stage || 'development' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
+          role-duration-seconds: 1800
+      - uses: ./.github/actions/aws-terraform-init
+        with:
+          stage: ${{ env.DEPLOYMENT_ENVIRONMENT }}
+          pull_request: ${{ inputs.pull_request }}
+      - name: Plan Infrastructure
+        env:
+          TF_VAR_tag_name: ${{ inputs.version }}
+          TF_CLI_ARGS_plan: "-var-file=${{ env.DEPLOYMENT_ENVIRONMENT }}.tfvars"
+        run: |
+          terraform -chdir=tf/infra plan
